@@ -11,7 +11,7 @@ class AmazonspiderSpider(scrapy.Spider):
 
     def parse(self, response):
         self.logger.info(f'Parse function called on {response.url}')
-        items = AmazonItem()
+        item = AmazonItem()
 
         page_title = response.css('title::text').extract_first()
         item_rows = response.css('.s-result-item')
@@ -44,14 +44,17 @@ class AmazonspiderSpider(scrapy.Spider):
                 if not book_detail_link:
                     book_detail_link = 'https://www.amazon.in' + row.css('.a-link-normal.a-text-normal::attr(href)').extract_first()
 
-                items['page_title'] = page_title
-                items['book_title'] = book_title
-                items['book_author'] = book_author
-                items['book_price'] = book_price
-                items['book_image_link'] = book_image_link
-                items['book_detail_link'] = book_detail_link
+                item['page_title'] = page_title
+                item['book_title'] = book_title
+                item['book_author'] = book_author
+                item['book_price'] = book_price
+                item['book_image_link'] = book_image_link
+                item['book_detail_link'] = book_detail_link
                 
-                yield items
+                request = scrapy.Request(book_detail_link, callback=self.book_detail_parse)
+                request.meta['item'] = item
+                
+                yield request
             except Exception as err:
                 print(err)
 
@@ -61,3 +64,27 @@ class AmazonspiderSpider(scrapy.Spider):
             print("="*30, AmazonspiderSpider.page_number)
             AmazonspiderSpider.page_number += 1
             yield response.follow(next_page, callback=self.parse)
+
+    def book_detail_parse(self, response):
+        item = response.meta['item'] 
+
+        book_length = response.css('.content > ul li:nth-child(3)::text').extract_first()
+        if book_length:
+            book_length = book_length.strip()
+        book_language = response.css('.content > ul li:nth-child(6)::text').extract_first()
+        if book_language:
+            book_language = book_language.strip()
+        book_ASIN = response.css('.content > ul li:nth-child(7)::text').extract_first()
+        if book_ASIN:
+            book_ASIN = book_ASIN.strip()
+        book_sales_rank = response.css('#SalesRank::text').extract_first()
+        if book_sales_rank:
+            book_sales_rank = book_sales_rank.strip()
+        # item['book_description'] = response.css('#product-description-iframe::text').extract_first().strip()
+        # item['book_description'] = response.css('.productDescriptionWrapper::text').extract_first()
+
+        item['book_length'] = book_length
+        item['book_language'] = book_language
+        item['book_ASIN'] = book_ASIN
+        item['book_sales_rank'] = book_sales_rank
+        yield item
