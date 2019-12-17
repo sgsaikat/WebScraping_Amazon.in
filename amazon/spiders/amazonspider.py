@@ -51,9 +51,7 @@ class AmazonspiderSpider(scrapy.Spider):
                 item['book_image_link'] = book_image_link
                 item['book_detail_link'] = book_detail_link
                 
-                request = scrapy.Request(book_detail_link, callback=self.book_detail_parse)
-                request.meta['item'] = item
-                
+                request = scrapy.Request(book_detail_link, callback=self.book_detail_parse, cb_kwargs=item)
                 yield request
             except Exception as err:
                 print(err)
@@ -65,9 +63,7 @@ class AmazonspiderSpider(scrapy.Spider):
             AmazonspiderSpider.page_number += 1
             yield response.follow(next_page, callback=self.parse)
 
-    def book_detail_parse(self, response):
-        item = response.meta['item'] 
-
+    def book_detail_parse(self, response, **item):
         book_length = response.css('.content > ul li:nth-child(3)::text').extract_first()
         if book_length:
             book_length = book_length.strip()
@@ -77,14 +73,14 @@ class AmazonspiderSpider(scrapy.Spider):
         book_ASIN = response.css('.content > ul li:nth-child(7)::text').extract_first()
         if book_ASIN:
             book_ASIN = book_ASIN.strip()
-        book_sales_rank = response.css('#SalesRank::text').extract_first()
-        if book_sales_rank:
-            book_sales_rank = book_sales_rank.strip()
+        # book_sales_rank = response.css('#SalesRank::text').extract_first()
+        # if book_sales_rank:
+        #     book_sales_rank = book_sales_rank.strip()
         # item['book_description'] = response.css('#product-description-iframe::text').extract_first().strip()
         # item['book_description'] = response.css('.productDescriptionWrapper::text').extract_first()
 
         item['book_length'] = book_length
         item['book_language'] = book_language
         item['book_ASIN'] = book_ASIN
-        item['book_sales_rank'] = book_sales_rank
+        # item['book_sales_rank'] = book_sales_rank
         yield item
